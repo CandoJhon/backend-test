@@ -49,8 +49,5 @@ def database_status():
         "message": "Database connection is optional for this test deployment"
     }
 
-# This is important for IBM Cloud Code Engine
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    logger.info(f"Starting server on port {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+# IMPORTANT: Remove the if __name__ == "__main__" block
+# Code Engine will run this with uvicorn command directly
