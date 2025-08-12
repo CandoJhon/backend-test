@@ -13,19 +13,26 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     build-essential \
     pkg-config \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip install --upgrade pip
 
 # Copy requirements first (for better caching)
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --no-warn-script-location -r requirements.txt
+# Install Python dependencies with verbose output
+RUN pip install --no-cache-dir --verbose -r requirements.txt
 
 # Copy application code
 COPY . .
 
 # Create auth module directory if it doesn't exist
 RUN mkdir -p auth
+
+# Create empty __init__.py if it doesn't exist
+RUN touch auth/__init__.py
 
 # Expose port
 EXPOSE 8080
