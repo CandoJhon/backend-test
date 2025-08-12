@@ -7,6 +7,12 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
+    g++ \
+    python3-dev \
+    libffi-dev \
+    libssl-dev \
+    build-essential \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (for better caching)
@@ -24,13 +30,13 @@ RUN mkdir -p auth
 # Expose port
 EXPOSE 8080
 
-# Environment variables with defaults
+# Environment variables with defaults (no secrets!)
 ENV PORT=8080
-ENV APPID_REGION=us-south
+ENV APPID_REGION=us-east
 ENV APPID_TENANT_ID=""
 ENV APPID_CLIENT_ID=""
 ENV APPID_SECRET=""
-ENV APPID_REDIRECT_URI="http://localhost:8080/auth/callback"
+ENV APPID_REDIRECT_URI=""
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
