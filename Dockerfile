@@ -8,46 +8,29 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
-    python3-dev \
     libffi-dev \
     libssl-dev \
-    build-essential \
-    pkg-config \
     curl \
     && rm -rf /var/lib/apt/lists/*
-
-# Upgrade pip
-RUN pip install --upgrade pip
 
 # Copy requirements first (for better caching)
 COPY requirements.txt .
 
-# Install Python dependencies with verbose output
-RUN pip install --no-cache-dir --verbose -r requirements.txt
+# Install Python dependencies (remove verbose flag)
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
 
-# Create auth module directory if it doesn't exist
-RUN mkdir -p auth
-
-# Create empty __init__.py if it doesn't exist
-RUN touch auth/__init__.py
+# Create auth module directory
+RUN mkdir -p auth && echo "" > auth/__init__.py
 
 # Expose port
 EXPOSE 8080
 
-# Environment variables with defaults (no secrets!)
+# Environment variables
 ENV PORT=8080
-ENV APPID_REGION=us-east
-ENV APPID_TENANT_ID=""
-ENV APPID_CLIENT_ID=""
-ENV APPID_SECRET=""
-ENV APPID_REDIRECT_URI=""
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:$PORT/health || exit 1
 
 # Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
