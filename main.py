@@ -118,6 +118,26 @@ async def protected_endpoint(current_user: dict = Depends(get_current_user)):
         ]
     }
 
+@app.get("/debug/token")
+async def debug_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Debug token validation"""
+    try:
+        token = credentials.credentials
+        logger.info(f"Received token (first 50 chars): {token[:50]}...")
+        
+        # Try to get user info directly
+        user_info = await app_id_auth.get_user_info(token)
+        return {
+            "message": "Token is valid",
+            "user_info": user_info
+        }
+    except Exception as e:
+        logger.error(f"Token debug failed: {e}")
+        return {
+            "error": str(e),
+            "message": "Token validation failed"
+        }
+
 @app.get("/api/public")
 async def public_endpoint():
     """Public API endpoint"""
