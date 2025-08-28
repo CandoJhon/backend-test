@@ -100,24 +100,35 @@ async def auth_callback(code: str, state: str = None):
     
 
 #debug auth/callback
-@app.get("/auth/callback")
-async def auth_callback(request: Request):
-    """Debug the callback to see raw parameters"""
+@app.get("/auth/callback")  # Note: GET, not POST for OAuth callback
+async def auth_callback(code: str, state: str = None):
+    """Handle OAuth callback from IBM App ID"""
+    try:
+        redirect_uri = os.getenv("APPID_REDIRECT_URI", "https://back-appid-01.1z0cxvgkml9e.us-east.codeengine.appdomain.cloud/auth/callback")
+        
+        logger.info(f"Processing callback with code length: {len(code)}")
+        
+        # Exchange code for tokens
+        tokens = await app_id_auth.exchange_code_for_tokens(code, redirect_uri=redirect_uri)
+        
+        # Get user info
+        user_info = await app_id_auth.get_user_info(tokens["access_token"])
+        
+        logger.info(f"Successfully authenticated user: {user_info.get('email')}")
+        
+        return {
+            "status": "success",
+            "message": "Authentication successful",
+            "access_token": tokens["access_token"],
+            "refresh_token": tokens.get("refresh_token"),
+            "user_info": user_info,
+            "expires_in": tokens.get("expires_in")
+        }
+    except Exception as e:
+        logger.error(f"Authentication callback failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Token exchange failed: {str(e)}")
     
-    # Log everything we receive
-    logger.info(f"Query params: {dict(request.query_params)}")
-    logger.info(f"Raw query string: {request.url.query}")
     
-    code = request.query_params.get('code')
-    logger.info(f"Extracted code: {code}")
-    logger.info(f"Code length: {len(code) if code else 0}")
-    
-    return {
-        "received_code": code,
-        "code_length": len(code) if code else 0,
-        "raw_query": str(request.url.query),
-        "all_params": dict(request.query_params)
-    }
 
 @app.get("/auth/user", dependencies=[Depends(get_current_user)])
 async def get_user_profile(current_user: dict = Depends(get_current_user)):
