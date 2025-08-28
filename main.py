@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
@@ -95,6 +95,27 @@ async def auth_callback(code: str, state: str = None):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+
+#debug auth/callback
+@app.get("/auth/callback")
+async def auth_callback(request: Request):
+    """Debug the callback to see raw parameters"""
+    
+    # Log everything we receive
+    logger.info(f"Query params: {dict(request.query_params)}")
+    logger.info(f"Raw query string: {request.url.query}")
+    
+    code = request.query_params.get('code')
+    logger.info(f"Extracted code: {code}")
+    logger.info(f"Code length: {len(code) if code else 0}")
+    
+    return {
+        "received_code": code,
+        "code_length": len(code) if code else 0,
+        "raw_query": str(request.url.query),
+        "all_params": dict(request.query_params)
+    }
 
 @app.get("/auth/user", dependencies=[Depends(get_current_user)])
 async def get_user_profile(current_user: dict = Depends(get_current_user)):
