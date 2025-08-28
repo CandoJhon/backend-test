@@ -194,6 +194,30 @@ async def debug_token(credentials: HTTPAuthorizationCredentials = Depends(securi
             "error": str(e),
             "message": "Token validation failed"
         }
+    
+#Debug frontend token
+@app.get("/debug/frontend-token")
+async def debug_frontend_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Debug what token the frontend is sending"""
+    try:
+        token = credentials.credentials
+        logger.info(f"Frontend token (first 50 chars): {token[:50]}...")
+        logger.info(f"Token length: {len(token)}")
+        
+        # Try to validate it
+        user_info = await app_id_auth.verify_token(token)
+        return {
+            "status": "valid",
+            "token_length": len(token),
+            "user_info": user_info
+        }
+    except Exception as e:
+        return {
+            "status": "invalid",
+            "error": str(e),
+            "token_length": len(token) if 'token' in locals() else 0
+        }
+    
 
 @app.get("/api/public")
 async def public_endpoint():
