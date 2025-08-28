@@ -84,7 +84,8 @@ async def get_login_url():
 async def auth_callback(code: str, state: str = None):
     """Handle OAuth callback from IBM App ID"""
     try:
-        tokens = await app_id_auth.exchange_code_for_tokens(code)
+        redirect_uri = os.getenv("APPID_REDIRECT_URI", "https://back-appid-01.1z0cxvgkml9e.us-east.codeengine.appdomain.cloud/auth/callback")
+        tokens = await app_id_auth.exchange_code_for_tokens(code, redirect_uri=redirect_uri)
         user_info = await app_id_auth.get_user_info(tokens["access_token"])
         
         return {
@@ -94,6 +95,7 @@ async def auth_callback(code: str, state: str = None):
             "expires_in": tokens.get("expires_in")
         }
     except Exception as e:
+        logger.error(f"Authentication callback failed: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     
 
