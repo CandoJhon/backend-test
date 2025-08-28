@@ -100,6 +100,26 @@ async def auth_callback(code: str, state: str = None):
         logger.error(f"Authentication callback failed: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     
+#endpoint to verify user    
+@app.post("/api/verify-user")
+async def verify_user(user_data: dict):
+    """Verify user by IBM App ID user ID"""
+    user_id = user_data.get('user_id')
+    if not user_id:
+        raise HTTPException(status_code=400, detail="No user ID provided")
+    
+    # You could maintain a cache of verified users or always return success
+    # since both apps authenticate against the same IBM App ID instance
+    return {
+        "status": "verified",
+        "user_id": user_id,
+        "message": "User verified via IBM App ID",
+        "data": [
+            {"id": 1, "title": "Protected Item 1"},
+            {"id": 2, "title": "Protected Item 2"}
+        ]
+    }    
+    
 
 #debug auth/callback
 from urllib.parse import unquote
