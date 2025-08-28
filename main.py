@@ -3,6 +3,8 @@ from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
+from urllib.parse import unquote
+import base64
 import uvicorn
 import os
 import logging
@@ -100,35 +102,56 @@ async def auth_callback(code: str, state: str = None):
     
 
 #debug auth/callback
-@app.get("/auth/callback")  # Note: GET, not POST for OAuth callback
-async def auth_callback(code: str, state: str = None):
-    """Handle OAuth callback from IBM App ID"""
+from urllib.parse import unquote
+import base64
+
+@app.get("/auth/callback")
+async def auth_callback(request: Request):
+    """Handle OAuth callback with proper encoding"""
     try:
-        redirect_uri = os.getenv("APPID_REDIRECT_URI", "https://back-appid-01.1z0cxvgkml9e.us-east.codeengine.appdomain.cloud/auth/callback")
+        # Get raw code parameter
+        raw_code = request.query_params.get('code')
+        logger.info(f"Raw code received (length: {len(raw_code)}): {raw_code[:100]}...")
         
-        logger.info(f"Processing callback with code length: {len(code)}")
+        # Try to decode if it's URL encoded
+        try:
+            decoded_code = unquote(raw_code)
+            logger.info(f"URL decoded code (length: {len(decoded_code)}): {decoded_code[:100]}...")
+            
+            # If still looks corrupted, might be base64 or other encoding
+            if len(decoded_code) > 200:  # Still too long
+                logger.warning("Code still appears corrupted after URL decoding")
+                # Try different decoding approaches
+                
+        except Exception as decode_error:
+            logger.error(f"Decoding failed: {decode_error}")
+            decoded_code = raw_code
         
-        # Exchange code for tokens
-        tokens = await app_id_auth.exchange_code_for_tokens(code, redirect_uri=redirect_uri)
+        # Use the best version of the code
+        final_code = decoded_code if len(decoded_code) < len(raw_code) else raw_code
         
-        # Get user info
+        logger.info(f"Using final code (length: {len(final_code)}): {final_code[:50]}...")
+        
+        # Try token exchange with cleaned code
+        redirect_uri = os.getenv("APPID_REDIRECT_URI")
+        tokens = await app_id_auth.exchange_code_for_tokens(final_code, redirect_uri=redirect_uri)
         user_info = await app_id_auth.get_user_info(tokens["access_token"])
-        
-        logger.info(f"Successfully authenticated user: {user_info.get('email')}")
         
         return {
             "status": "success",
-            "message": "Authentication successful",
             "access_token": tokens["access_token"],
-            "refresh_token": tokens.get("refresh_token"),
-            "user_info": user_info,
-            "expires_in": tokens.get("expires_in")
+            "user_info": user_info
         }
+        
     except Exception as e:
-        logger.error(f"Authentication callback failed: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Token exchange failed: {str(e)}")
+        logger.error(f"Callback failed: {str(e)}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "received_code_length": len(raw_code) if 'raw_code' in locals() else 0
+        }
     
-    
+
 
 @app.get("/auth/user", dependencies=[Depends(get_current_user)])
 async def get_user_profile(current_user: dict = Depends(get_current_user)):
